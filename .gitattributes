@@ -1,0 +1,11 @@
+# Set default behavior to normalize line endings
+* text=auto
+# Force certain files to always use LF
+*.py text eol=lf
+*.txt text eol=lf
+*.md text elf=lf
+# for git archive
+.vscode/* export-ignore
+.vs/* export-ignore
+__pycache__/* export-ignore
+.venv/* export-ignore
