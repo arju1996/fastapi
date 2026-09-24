@@ -14,7 +14,7 @@ from sqlmodel import Session, select
 
 from fastapi import Depends
 
-from .models import Tweet
+from .models import Tweet, TweetCreate, TweetPublic
 
 from fastapi import Depends
 from typing import Annotated
@@ -52,25 +52,25 @@ def read_root():
     return {"hello", "world"}
 
 @app.post("/tweet", status_code= status.HTTP_201_CREATED)
-def create_tweet(tweet: Tweet, session: SessionDep)->Tweet:
-    tweet = Tweet(title = tweet.title, content = tweet.content, validated = tweet.validated, media_url= tweet.media_url)
+def create_tweet(tweet: TweetCreate, session: SessionDep)->TweetPublic:
+    tweet = Tweet.model_validate(tweet)
     session.add(tweet)
     session.commit()
     session.refresh(tweet)
     return tweet
 
 @app.get("/tweets", status_code= status.HTTP_200_OK)
-def get_all_tweets(session: SessionDep)->list[Tweet]:
+def get_all_tweets(session: SessionDep)->list[TweetPublic]:
     tweets = session.exec(select(Tweet)).all()
     return tweets
 
 @app.get("/tweet/latest")
-def get_tweet(response: Response, session: SessionDep)->Tweet:
+def get_tweet(response: Response, session: SessionDep)->TweetPublic:
     tweet = session.exec(select(Tweet).order_by(Tweet.created_at.desc())).first()
     return tweet
 
 @app.get("/tweet/{id}")
-def get_tweet(id:int, session: SessionDep)->Tweet:
+def get_tweet(id:int, session: SessionDep)->TweetPublic:
     # tweet = session.exec(select(Tweet).where(Tweet.id == id)).first()
     tweet = session.get(Tweet, id)
     if not tweet:
@@ -87,7 +87,7 @@ def delete_tweet(id: int, response: Response, session: SessionDep)->None:
     return
 
 @app.put("/tweet/{id}")
-def updated_tweet(id: int, tweet: Tweet, session: SessionDep)->Tweet:
+def updated_tweet(id: int, tweet: TweetCreate, session: SessionDep)->TweetPublic:
     tweet_to_update = session.get(Tweet, id)
     if not tweet_to_update:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"tweet with id: {id} was not found")
@@ -101,7 +101,7 @@ def updated_tweet(id: int, tweet: Tweet, session: SessionDep)->Tweet:
     return tweet_to_update
 
 @app.patch("/tweet/{id}")
-def updated_tweet(id: int, tweet: Tweet, session: SessionDep)->Tweet:
+def updated_tweet(id: int, tweet: TweetPublic, session: SessionDep)->TweetPublic:
     post = findPost(id)  # this is reference, everything in python is ref
     if not post:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"post with id: {id} was not found")
@@ -110,7 +110,7 @@ def updated_tweet(id: int, tweet: Tweet, session: SessionDep)->Tweet:
 
 
 @app.patch("/tweet/{id}")
-def updated_tweet(id: int, tweet: Tweet, session: SessionDep)->Tweet:
+def updated_tweet(id: int, tweet: TweetPublic, session: SessionDep)->TweetPublic:
     tweet_to_update = session.get(Tweet, id)
     if not tweet_to_update:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"tweet with id: {id} was not found")
