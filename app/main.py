@@ -1,22 +1,23 @@
 from fastapi import FastAPI, status, Response, HTTPException
 from fastapi.param_functions import Body 
 
-from pydantic import BaseModel
-from datetime import datetime
-
-from typing import Optional
 from random import randrange
 
 import psycopg
 import time
 from psycopg.rows import dict_row
-class Tweet(BaseModel):
-    title: str
-    content: str
-    validated: bool = False
-    media_url: str | None = None
-    created_at: Optional[datetime] = None #optinal is older way
+from sqlmodel import SQLModel
 
+from .database import engine
+from .database import get_session
+from sqlmodel import Session, select
+
+from fastapi import Depends
+
+from .models import Tweet
+
+from fastapi import Depends
+from typing import Annotated
 
 my_posts = []
 
@@ -24,6 +25,9 @@ def findPost(id):
     for p in my_posts:
         if p["id"] == id :
             return p
+
+SQLModel.metadata.create_all(engine)
+SessionDep = Annotated[Session, Depends(get_session)]
 
 app = FastAPI()
 
@@ -48,57 +52,73 @@ def read_root():
     return {"hello", "world"}
 
 @app.post("/tweet", status_code= status.HTTP_201_CREATED)
-def create_tweet(tweet: Tweet):
-    # time = datetime.now()
-    cur.execute("INSERT INTO tweets (title, content, validated, media_url) VALUES (%s, %s, %s, %s) returning *", (tweet.title, tweet.content, tweet.validated, tweet.media_url))    #parameters has to be in a tuple or list ie (id, ) or (id, id2) or []
-    created_tweet = cur.fetchone()
-    conn.commit()
-    return {"data": created_tweet}
+def create_tweet(tweet: Tweet, session: SessionDep)->Tweet:
+    tweet = Tweet(title = tweet.title, content = tweet.content, validated = tweet.validated, media_url= tweet.media_url)
+    session.add(tweet)
+    session.commit()
+    session.refresh(tweet)
+    return tweet
 
 @app.get("/tweets", status_code= status.HTTP_200_OK)
-def get_all_tweets():
-    cur.execute("SELECT * FROM tweets")
-    tweets = cur.fetchall()
-    return {"data": tweets}
+def get_all_tweets(session: SessionDep)->list[Tweet]:
+    tweets = session.exec(select(Tweet)).all()
+    return tweets
 
 @app.get("/tweet/latest")
-def get_tweet(response: Response):
-    cur.execute("SELECT * FROM tweets order by created_at")
-    tweet = cur.fetchone()
-    print(tweet)
-    return {"post_detail": tweet}
+def get_tweet(response: Response, session: SessionDep)->Tweet:
+    tweet = session.exec(select(Tweet).order_by(Tweet.created_at.desc())).first()
+    return tweet
 
 @app.get("/tweet/{id}")
-def get_tweet(id:int):
-    cur.execute("SELECT * FROM tweets where id = %s", (id,))    #parameters has to be in a tuple or list ie (id, ) or (id, id2) or []
-    tweet = cur.fetchone()
+def get_tweet(id:int, session: SessionDep)->Tweet:
+    # tweet = session.exec(select(Tweet).where(Tweet.id == id)).first()
+    tweet = session.get(Tweet, id)
     if not tweet:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"post with id: {id} was not found")
-    return {"detail": tweet}
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"tweett with id: {id} was not found")
+    return tweet
 
 @app.delete("/tweet/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_tweet(id: int, response: Response):
-    cur.execute("DELETE FROM tweets where id = %s  returning *", (id, ))
-    deleted_post = cur.fetchone()
-    conn.commit() # why do i not need commit in delete?
-    if not deleted_post:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"post with id: {id} was not found")
+def delete_tweet(id: int, response: Response, session: SessionDep)->None:
+    deleted_tweet = session.get(Tweet, id)
+    if not deleted_tweet:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"tweet with id: {id} was not found")
+    session.delete(deleted_tweet)
+    session.commit()
     return
 
 @app.put("/tweet/{id}")
-def updated_tweet(id: int, tweet: Tweet):
-    cur.execute("UPDATE tweets SET title = %s, content = %s, validated = %s, media_url = %s  WHERE ID = %s returning *", (tweet.title, tweet.content, tweet.validated, tweet.media_url, id))
-    updated_tweet = cur.fetchone()
-    
-    if not updated_tweet:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"post with id: {id} was not found")
-    return {"data" : updated_tweet}
+def updated_tweet(id: int, tweet: Tweet, session: SessionDep)->Tweet:
+    tweet_to_update = session.get(Tweet, id)
+    if not tweet_to_update:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"tweet with id: {id} was not found")
 
+    newtweet = tweet.model_dump()
+    tweet_to_update.sqlmodel_update(newtweet)
+    session.add(tweet_to_update)
+    session.commit()
+    session.refresh(tweet_to_update)
+
+    return tweet_to_update
 
 @app.patch("/tweet/{id}")
-def updated_tweet(id: int, tweet: Tweet):
+def updated_tweet(id: int, tweet: Tweet, session: SessionDep)->Tweet:
     post = findPost(id)  # this is reference, everything in python is ref
     if not post:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"post with id: {id} was not found")
     post.update(tweet.model_dump(exclude_unset=True)) # this looks more like patch than a put to me
     return {"message" : f"post with id: {id} is updated"}
+
+
+@app.patch("/tweet/{id}")
+def updated_tweet(id: int, tweet: Tweet, session: SessionDep)->Tweet:
+    tweet_to_update = session.get(Tweet, id)
+    if not tweet_to_update:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"tweet with id: {id} was not found")
+
+    newtweet = tweet.model_dump(exclude_unset=True)
+    tweet_to_update.sqlmodel_update(newtweet)
+    session.add(tweet_to_update)
+    session.commit()
+    session.refresh(tweet_to_update)
+
+    return tweet_to_update
