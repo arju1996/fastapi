@@ -5,6 +5,8 @@ from typing import Optional
 from datetime import datetime, UTC
 from sqlmodel import Field, SQLModel
 
+from pydantic import EmailStr
+
 
 class TweetBase(SQLModel):
     title: str
@@ -22,3 +24,20 @@ class TweetPublic(TweetBase):
 class Tweet(TweetBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class UserBase(SQLModel):
+    email: EmailStr
+
+class UserCreate(UserBase):
+    password: str
+
+class UserOut(UserBase):
+    id: int
+    created_at: datetime
+
+class User(UserBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    email: EmailStr = Field(unique=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    password: str
