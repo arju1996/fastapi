@@ -17,7 +17,7 @@ from .models import Tweet, TweetCreate, TweetPublic, User, UserCreate, UserOut
 
 from . import utils
 
-from .routers import tweet, user
+from .routers import tweet, user, auth
 
 SQLModel.metadata.create_all(engine)
 
@@ -41,6 +41,7 @@ while True:
 
 app.include_router(tweet.router)
 app.include_router(user.router)
+app.include_router(auth.router)
 
 @app.get("/")
 def read_root():

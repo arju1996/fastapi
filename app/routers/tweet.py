@@ -1,5 +1,5 @@
-from fastapi import status, HTTPException, Response, APIRouter
-from .. import models
+from fastapi import Depends, status, HTTPException, Response, APIRouter
+from .. import models, oauth2
 
 from sqlmodel import Session, select
 
@@ -18,7 +18,7 @@ def findPost(id):
             return p
 
 @router.post("/", status_code= status.HTTP_201_CREATED)
-def create_tweet(tweet: models.TweetCreate, session: SessionDep)->models.TweetPublic:
+def create_tweet(tweet: models.TweetCreate, session: SessionDep, user: models.User = Depends(oauth2.get_current_user))->models.TweetPublic:
     tweet = models.Tweet.model_validate(tweet)
     session.add(tweet)
     session.commit()
@@ -36,7 +36,7 @@ def get_tweet(response: Response, session: SessionDep)->models.TweetPublic:
     return tweet
 
 @router.get("/{id}")
-def get_tweet(id:int, session: SessionDep)->models.TweetPublic:
+def get_tweet(id:int, session: SessionDep, user: models.User = Depends(oauth2.get_current_user))->models.TweetPublic:
     # tweet = session.exec(select(Tweet).where(Tweet.id == id)).first()
     tweet = session.get(models.Tweet, id)
     if not tweet:
@@ -44,7 +44,7 @@ def get_tweet(id:int, session: SessionDep)->models.TweetPublic:
     return tweet
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_tweet(id: int, response: Response, session: SessionDep)->None:
+def delete_tweet(id: int, response: Response, session: SessionDep, user: models.User = Depends(oauth2.get_current_user))->None:
     deleted_tweet = session.get(models.Tweet, id)
     if not deleted_tweet:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"tweet with id: {id} was not found")
@@ -53,7 +53,7 @@ def delete_tweet(id: int, response: Response, session: SessionDep)->None:
     return
 
 @router.put("/{id}")
-def updated_tweet(id: int, tweet: models.TweetCreate, session: SessionDep)->models.TweetPublic:
+def updated_tweet(id: int, tweet: models.TweetCreate, session: SessionDep, user: models.User = Depends(oauth2.get_current_user))->models.TweetPublic:
     tweet_to_update = session.get(models.Tweet, id)
     if not tweet_to_update:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"tweet with id: {id} was not found")
@@ -67,7 +67,7 @@ def updated_tweet(id: int, tweet: models.TweetCreate, session: SessionDep)->mode
     return tweet_to_update
 
 @router.patch("/{id}")
-def updated_tweet(id: int, tweet: models.TweetPublic, session: SessionDep)->models.TweetPublic:
+def updated_tweet(id: int, tweet: models.TweetPublic, session: SessionDep, user: models.User = Depends(oauth2.get_current_user))->models.TweetPublic:
     post = findPost(id)  # this is reference, everything in python is ref
     if not post:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"post with id: {id} was not found")
@@ -76,7 +76,7 @@ def updated_tweet(id: int, tweet: models.TweetPublic, session: SessionDep)->mode
 
 
 @router.patch("/{id}")
-def updated_tweet(id: int, tweet: models.TweetPublic, session: SessionDep)->models.TweetPublic:
+def updated_tweet(id: int, tweet: models.TweetPublic, session: SessionDep, user: models.User = Depends(oauth2.get_current_user))->models.TweetPublic:
     tweet_to_update = session.get(models.Tweet, id)
     if not tweet_to_update:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"tweet with id: {id} was not found")

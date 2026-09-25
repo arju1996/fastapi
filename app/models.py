@@ -41,3 +41,10 @@ class User(UserBase, table=True):
     email: EmailStr = Field(unique=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     password: str
+
+class TokenBase(SQLModel):
+    access_token: str
+    token_type: str
+
+class TokenData(SQLModel):
+    id : str

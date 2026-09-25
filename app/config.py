@@ -7,6 +7,9 @@ class Settings(BaseSettings):
     DATABASE_PORT: str
     DATABASE_NAME: str
     DATABASE_URL: str
+    SECRET_KEY: str
+    ALGORITHM: str
+    ACCESS_TOKEN_EXPIRE_MINUTES: int
     class Config:
         env_file = ".env"
 

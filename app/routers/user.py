@@ -1,5 +1,5 @@
-from fastapi import status, HTTPException, APIRouter
-from .. import models, utils
+from fastapi import status, HTTPException, APIRouter, Depends
+from .. import models, utils, oauth2
 
 from ..database import SessionDep
 
@@ -19,7 +19,7 @@ def create_user(user: models.UserCreate, session: SessionDep)->models.UserOut:
     return new_user
 
 @router.get("/{id}", status_code= status.HTTP_200_OK)
-def create_user(id: int, session: SessionDep)->models.UserOut:
+def get_user(id: int, session: SessionDep, user_id:int = Depends(oauth2.get_current_user))->models.UserOut:
 
     user = session.get(models.User, id)
     if not user:
