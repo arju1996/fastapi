@@ -19,7 +19,8 @@ def findPost(id):
 
 @router.post("/", status_code= status.HTTP_201_CREATED)
 def create_tweet(tweet: models.TweetCreate, session: SessionDep, user: models.User = Depends(oauth2.get_current_user))->models.TweetPublic:
-    tweet = models.Tweet.model_validate(tweet)
+    # if not authenticated it should throw error before reaching here
+    tweet = models.Tweet.model_validate(tweet, update={"owner_id":user.id})
     session.add(tweet)
     session.commit()
     session.refresh(tweet)
@@ -48,6 +49,8 @@ def delete_tweet(id: int, response: Response, session: SessionDep, user: models.
     deleted_tweet = session.get(models.Tweet, id)
     if not deleted_tweet:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"tweet with id: {id} was not found")
+    if deleted_tweet.owner_id != user.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, f"not autherized to perform the requested action")
     session.delete(deleted_tweet)
     session.commit()
     return
@@ -57,7 +60,8 @@ def updated_tweet(id: int, tweet: models.TweetCreate, session: SessionDep, user:
     tweet_to_update = session.get(models.Tweet, id)
     if not tweet_to_update:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"tweet with id: {id} was not found")
-
+    if tweet_to_update.owner_id != user.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, f"not autherized to perform the requested action")
     newtweet = tweet.model_dump()
     tweet_to_update.sqlmodel_update(newtweet)
     session.add(tweet_to_update)
@@ -71,6 +75,9 @@ def updated_tweet(id: int, tweet: models.TweetPublic, session: SessionDep, user:
     post = findPost(id)  # this is reference, everything in python is ref
     if not post:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"post with id: {id} was not found")
+    if post.owner_id != user.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, f"not autherized to perform the requested action")
+    
     post.update(tweet.model_dump(exclude_unset=True)) # this looks more like patch than a put to me
     return {"message" : f"post with id: {id} is updated"}
 
@@ -80,6 +87,8 @@ def updated_tweet(id: int, tweet: models.TweetPublic, session: SessionDep, user:
     tweet_to_update = session.get(models.Tweet, id)
     if not tweet_to_update:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"tweet with id: {id} was not found")
+    if tweet_to_update.owner_id != user.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, f"not autherized to perform the requested action")
 
     newtweet = tweet.model_dump(exclude_unset=True)
     tweet_to_update.sqlmodel_update(newtweet)
