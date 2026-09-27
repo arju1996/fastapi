@@ -1,8 +1,7 @@
-from fastapi import Depends, status, HTTPException, Response, APIRouter
-from .. import models, oauth2
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from sqlmodel import select
 
-from sqlmodel import Session, select
-
+from .. import oauth2, models
 from ..database import SessionDep
 
 router = APIRouter(
@@ -10,21 +9,18 @@ router = APIRouter(
     tags=['Tweets']
 )
 
-my_posts = []
-
-def findPost(id):
-    for p in my_posts:
-        if p["id"] == id :
-            return p
-
 @router.post("/", status_code= status.HTTP_201_CREATED)
 def create_tweet(tweet: models.TweetCreate, session: SessionDep, user: models.User = Depends(oauth2.get_current_user))->models.TweetPublic:
     # if not authenticated it should throw error before reaching here
-    tweet = models.Tweet.model_validate(tweet, update={"owner_id":user.id})
-    session.add(tweet)
+    # cant use model validate, as created_at has to come from db, and created_at is not nullable
+    # tweet = models.Tweet.model_validate(tweet, update={"owner_id":user.id})
+    tweet = tweet.model_dump(exclude_unset=True)
+    tweet.update({"owner_id":user.id})
+    db_tweet = models.Tweet(**tweet)
+    session.add(db_tweet)
     session.commit()
-    session.refresh(tweet)
-    return tweet
+    session.refresh(db_tweet)
+    return db_tweet
 
 @router.get("/", status_code= status.HTTP_200_OK)
 def get_all_tweets(session: SessionDep)->list[models.TweetPublic]:
@@ -69,17 +65,6 @@ def updated_tweet(id: int, tweet: models.TweetCreate, session: SessionDep, user:
     session.refresh(tweet_to_update)
 
     return tweet_to_update
-
-@router.patch("/{id}")
-def updated_tweet(id: int, tweet: models.TweetPublic, session: SessionDep, user: models.User = Depends(oauth2.get_current_user))->models.TweetPublic:
-    post = findPost(id)  # this is reference, everything in python is ref
-    if not post:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"post with id: {id} was not found")
-    if post.owner_id != user.id:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, f"not autherized to perform the requested action")
-    
-    post.update(tweet.model_dump(exclude_unset=True)) # this looks more like patch than a put to me
-    return {"message" : f"post with id: {id} is updated"}
 
 
 @router.patch("/{id}")

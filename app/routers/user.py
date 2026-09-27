@@ -1,6 +1,6 @@
-from fastapi import status, HTTPException, APIRouter, Depends
-from .. import models, utils, oauth2
+from fastapi import APIRouter, Depends, HTTPException, status
 
+from .. import models, utils, oauth2
 from ..database import SessionDep
 
 
@@ -12,7 +12,8 @@ router = APIRouter(
 @router.post("/", status_code= status.HTTP_201_CREATED)
 def create_user(user: models.UserCreate, session: SessionDep)->models.UserOut:
     user.password = utils.hash(user.password)
-    new_user = models.User.model_validate(user)
+    # new_user = models.User.model_validate(user) # cant use model validate, as created_at has to come from db, and created_at is not nullable
+    new_user = models.User(email=user.email, password=user.password)
     session.add(new_user)
     session.commit()
     session.refresh(new_user)
