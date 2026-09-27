@@ -23,8 +23,12 @@ def create_tweet(tweet: models.TweetCreate, session: SessionDep, user: models.Us
     return db_tweet
 
 @router.get("/", status_code= status.HTTP_200_OK)
-def get_all_tweets(session: SessionDep)->list[models.TweetPublic]:
-    tweets = session.exec(select(models.Tweet)).all()
+def get_all_tweets(session: SessionDep, search: str | None = None, limit:int = 10, skip:int = 0)->list[models.TweetPublic]:
+    query = select(models.Tweet)
+    if search:
+        query = query.where( models.Tweet.title.ilike(f"%{search}%"))
+    query = query.offset(skip).limit(limit)
+    tweets = session.exec(query).all()
     return tweets
 
 @router.get("/latest")
