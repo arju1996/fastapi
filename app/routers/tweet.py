@@ -1,5 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlmodel import select
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlmodel import func, select
+
+from sqlalchemy.orm import selectinload
 
 from .. import oauth2, models
 from ..database import SessionDep
@@ -23,16 +25,42 @@ def create_tweet(tweet: models.TweetCreate, session: SessionDep, user: models.Us
     return db_tweet
 
 @router.get("/", status_code= status.HTTP_200_OK)
-def get_all_tweets(session: SessionDep, search: str | None = None, limit:int = 10, skip:int = 0)->list[models.TweetPublic]:
-    query = select(models.Tweet)
+def get_all_tweets(session: SessionDep, search: str | None = None, limit:int = 10, skip:int = 0)->list[models.TweetWithLikeCount]:
+    # query = select(models.Tweet)
+    query = (
+        select(models.Tweet, 
+        func.count(models.Vote.tweet_id))
+        .join(models.Vote, onclause = models.Vote.tweet_id==models.Tweet.id, isouter=True)
+        .group_by(models.Tweet.id)
+        .options(selectinload(models.Tweet.owner))  # this makes 1(tweets) + n(user) to 1(tweet) + 1(users)
+    )
+    # query = (
+    #     select(models.Tweet, func.count(models.Vote.tweet_id).label("count"))
+    #     .outerjoin(models.Vote, onclause=models.Vote.tweet_id == models.Tweet.id)
+    #     .options(selectinload(models.Tweet.owner))
+    #     .group_by(models.Tweet.id)
+    #     .offset(skip)
+    #     .limit(limit)
+    # )
     if search:
         query = query.where( models.Tweet.title.ilike(f"%{search}%"))
     query = query.offset(skip).limit(limit)
     tweets = session.exec(query).all()
-    return tweets
+
+
+    tweets_with_likescount : list[models.TweetWithLikeCount] = []
+    for a, b in tweets:
+        tweet_with_like = models.TweetWithLikeCount.model_validate(a, update={"count":b})
+        tweets_with_likescount.append(tweet_with_like)
+    return tweets_with_likescount
+
+    return [
+        models.TweetWithLikeCount.model_validate(tweet, update={"count": count})
+        for tweet, count in tweets
+    ]
 
 @router.get("/latest")
-def get_tweet(response: Response, session: SessionDep)->models.TweetPublic:
+def get_tweet(session: SessionDep)->models.TweetPublic:
     tweet = session.exec(select(models.Tweet).order_by(models.Tweet.created_at.desc())).first()
     return tweet
 
@@ -45,7 +73,7 @@ def get_tweet(id:int, session: SessionDep, user: models.User = Depends(oauth2.ge
     return tweet
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_tweet(id: int, response: Response, session: SessionDep, user: models.User = Depends(oauth2.get_current_user))->None:
+def delete_tweet(id: int, session: SessionDep, user: models.User = Depends(oauth2.get_current_user))->None:
     deleted_tweet = session.get(models.Tweet, id)
     if not deleted_tweet:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"tweet with id: {id} was not found")

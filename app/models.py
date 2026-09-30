@@ -52,3 +52,15 @@ class Tweet(TweetBase, table=True):
     )
     owner_id: int = Field(foreign_key="user.id", ondelete="CASCADE")  #this is ugly, it should habve been User.id instead of user.id but since user is already taken keyword its not possible
     owner: User | None = Relationship(back_populates="tweets")
+
+class TweetWithLikeCount(TweetPublic):
+    count: int
+
+class Vote(SQLModel, table=True):
+    user_id: int = Field(foreign_key="user.id", ondelete="CASCADE", primary_key=True)
+    tweet_id: int = Field(foreign_key="tweet.id", ondelete="CASCADE", primary_key=True)
+    vote_up: bool = Field(default=True)
+
+class VotePublic(SQLModel):
+    tweet_id: int
+    vote_up: bool
