@@ -4,7 +4,7 @@ from sqlmodel import SQLModel
 from .database import engine
 from .routers import auth, tweet, user, vote
 
-SQLModel.metadata.create_all(engine)
+# SQLModel.metadata.create_all(engine)
 
 app = FastAPI()
 
