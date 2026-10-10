@@ -1,0 +1,49 @@
+services:
+  api:
+    build: .
+    command: uv run fastapi run --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      - postgres
+    develop:
+      watch:
+        - action: sync
+          path: ./app
+          target: /usr/src/app/app
+          initial_sync: true
+        - action: rebuild
+          path: uv.lock
+          
+
+    ports:
+      - 8000:8000
+    env_file:
+      - ./.env
+    environment:
+      # - DATABASE_HOSTNAME=postgres
+      # - DATABASE_USERNAME=postgres
+      # - DATABASE_PASSWORD=1441
+      # - DATABASE_PORT=5432
+      # - DATABASE_NAME=fastapi
+      # - DATABASE_URL=
+      # - SECRET_KEY=hlwwwwwww
+      # - ALGORITHM=HS256
+      # - ACCESS_TOKEN_EXPIRE_MINUTES=30
+      - DATABASE_HOSTNAME=postgres
+      - DATABASE_USERNAME=${DATABASE_USERNAME}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - DATABASE_PORT=${DATABASE_PORT}
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_URL=
+      - SECRET_KEY=${SECRET_KEY}
+      - ALGORITHM=${ALGORITHM}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
+  postgres:
+    image: postgres:18
+    environment:
+      - POSTGRES_PASSWORD=1441
+      - POSTGRES_DB=fastapi
+    volumes:
+      - postgres-db:/var/lib/postgresql
+
+volumes:
+  postgres-db:
