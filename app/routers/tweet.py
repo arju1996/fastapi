@@ -78,7 +78,7 @@ def delete_tweet(id: int, session: SessionDep, user: models.User = Depends(oauth
     if not deleted_tweet:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"tweet with id: {id} was not found")
     if deleted_tweet.owner_id != user.id:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, f"not autherized to perform the requested action")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, f"not authorized to perform the requested action")
     session.delete(deleted_tweet)
     session.commit()
     return
@@ -89,7 +89,7 @@ def updated_tweet(id: int, tweet: models.TweetCreate, session: SessionDep, user:
     if not tweet_to_update:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"tweet with id: {id} was not found")
     if tweet_to_update.owner_id != user.id:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, f"not autherized to perform the requested action")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, f"not authorized to perform the requested action")
     newtweet = tweet.model_dump()
     tweet_to_update.sqlmodel_update(newtweet)
     session.add(tweet_to_update)
@@ -105,7 +105,7 @@ def updated_tweet(id: int, tweet: models.TweetPublic, session: SessionDep, user:
     if not tweet_to_update:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"tweet with id: {id} was not found")
     if tweet_to_update.owner_id != user.id:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, f"not autherized to perform the requested action")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, f"not authorized to perform the requested action")
 
     newtweet = tweet.model_dump(exclude_unset=True)
     tweet_to_update.sqlmodel_update(newtweet)
