@@ -10,9 +10,33 @@ on:
 
 jobs:
   job1:
+    environment:
+      name: testing
+    env:
+      DATABASE_HOSTNAME: ${{secrets.DATABASE_HOSTNAME}}
+      DATABASE_USERNAME: ${{secrets.DATABASE_USERNAME}}
+      DATABASE_PASSWORD: ${{secrets.DATABASE_PASSWORD}}
+      DATABASE_PORT: ${{secrets.DATABASE_PORT}}
+      DATABASE_NAME: ${{secrets.DATABASE_NAME}}
+      DATABASE_URL: ${{secrets.DUMMY}}
+      SECRET_KEY: ${{secrets.SECRET_KEY}}
+      ALGORITHM: ${{secrets.ALGORITHM}}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${{secrets.ACCESS_TOKEN_EXPIRE_MINUTES}}
     runs-on: ubuntu-latest
     steps:
       - name: "pulling git repo"
         uses: actions/checkout@v7
-      - name: "do hello world"
-        run: echo "hellow world"
+      - name: install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+        with: 
+          version: "0.12.15"
+      - name: "install python"
+        uses: actions/setup-python@v7
+        with:
+          # python_version: 3.14
+          python-version-file: "pyproject.toml"
+      - name: install the deps
+        run:  uv sync --locked --all-extras --dev
+
+      - name: run tests
+        run: uv run pytest -x -v --disable-warnings
