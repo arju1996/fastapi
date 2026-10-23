@@ -26,9 +26,9 @@ jobs:
       postgres:
         image: postgres
         env:
-          - POSTGRES_DB: ${{DATABASE_NAME}}_test
-          - POSTGRES_PASSWORD: ${{DATABASE_PASSWORD}}
-          - POSTGRES_PORT: ${{DATABASE_PORT}}
+          POSTGRES_DB: ${{DATABASE_NAME}}_test
+          POSTGRES_PASSWORD: ${{DATABASE_PASSWORD}}
+          POSTGRES_PORT: ${{DATABASE_PORT}}
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
