@@ -22,6 +22,20 @@ jobs:
       SECRET_KEY: ${{secrets.SECRET_KEY}}
       ALGORITHM: ${{secrets.ALGORITHM}}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${{secrets.ACCESS_TOKEN_EXPIRE_MINUTES}}
+    services:
+      postgres:
+        image: postgres
+        env:
+          - POSTGRES_DB: ${{DATABASE_NAME}}_test
+          - POSTGRES_PASSWORD: ${{DATABASE_PASSWORD}}
+          - POSTGRES_PORT: ${{DATABASE_PORT}}
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        # ports:
+        #   - ${{DATABASE_PORT}}: ${{DATABASE_PORT}}
     runs-on: ubuntu-latest
     steps:
       - name: "pulling git repo"
@@ -40,3 +54,24 @@ jobs:
 
       - name: run tests
         run: uv run pytest -x -v --disable-warnings
+      - name: Extract Docker image metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ vars.DOCKER_USERNAME }}/fastapi
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{secrets.DOCKER_HUB_USERNAME}}
+          password: ${{secrets.DOCKER_HUB_ACCESS_TOKEN}}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v7
+        with:
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+          provenance: true
+          sbom: true
