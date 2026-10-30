@@ -1,6 +1,6 @@
 services:
   api:
-    image: arjunttdev/fastapi:main
+    image: arjunttdev/fastapi:latest
     depends_on:
       - postgres
     ports:
